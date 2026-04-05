@@ -1,18 +1,28 @@
 from pocketflow import Node, Flow
-from services.llm_services import get_response
+from pydantic import BaseModel
+from services.llm_services import get_response, get_response_structured
+from prompts import DECIDE_NODE_PROMPT
+from enum import Enum
 
-class basicLLM(Node):
+decisions = ["get_schema", "generate_sql", "execute_sql", "respond"]
+
+Action = Enum("Action", {d: d for d in decisions}, type=str)
+
+class AgentAction(BaseModel):
+    action: Action
+
+class decideAction(Node):
     def prep(self, shared):
-        return shared["query"]
+        return shared["context"]
     
-    def exec(self, query):
-        return get_response(query)
+    def exec(self, prep_res):
+        prompt = DECIDE_NODE_PROMPT.format(TOOLS=str(decisions), CONTEXT=str(prep_res))
+        return get_response_structured(prompt, AgentAction)
     
     def post(self, shared, prep_res, exec_res):
         shared["response"] = exec_res
         print(exec_res)
 
-basic = basicLLM()
+basic = decideAction()
 flow = Flow(start=basic)
-flow.run({"query":input("Say something: ")})
-
+flow.run({"context":input("Say something: ")})

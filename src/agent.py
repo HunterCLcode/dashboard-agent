@@ -21,8 +21,19 @@ class decideAction(Node):
     
     def post(self, shared, prep_res, exec_res):
         shared["response"] = exec_res
-        print(exec_res)
+        if hasattr(exec_res, "action") and exec_res.action == Action.respond:
+            return "respond"
 
-basic = decideAction()
-flow = Flow(start=basic)
+class responseAction(Node):
+    def prep(self, shared):
+        print("hi")
+        return shared["response"]
+
+decide = decideAction()
+respond = responseAction()
+
+decide - "respond" >> respond
+
+flow = Flow(start=decide)
 flow.run({"context":input("Say something: ")})
+#print(Action.respond == "respond")

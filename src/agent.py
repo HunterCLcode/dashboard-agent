@@ -1,5 +1,5 @@
 from pocketflow import Node, Flow
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.llm_services import get_response, get_response_structured
 from prompts import DECIDE_NODE_PROMPT
 from enum import Enum
@@ -10,10 +10,11 @@ Action = Enum("Action", {d: d for d in decisions}, type=str)
 
 class AgentAction(BaseModel):
     action: Action
+    reasoning : str = Field("", description="Short reason why you chose this route, should be 1-2 sentences")
 
 class decideAction(Node):
     def prep(self, shared):
-        return shared["context"]
+        return shared["input"]
     
     def exec(self, prep_res):
         prompt = DECIDE_NODE_PROMPT.format(TOOLS=str(decisions), CONTEXT=str(prep_res))
@@ -21,6 +22,8 @@ class decideAction(Node):
     
     def post(self, shared, prep_res, exec_res):
         shared["response"] = exec_res
+        # TODO: assert action and reasoning are a part of response
+        shared["scratchpad"].append(f"Decision Node Route: [{exec_res.action}] Reason: [{exec_res.reasoning}]")
         if hasattr(exec_res, "action") and exec_res.action == Action.respond:
             return "respond"
 
@@ -35,5 +38,5 @@ respond = responseAction()
 decide - "respond" >> respond
 
 flow = Flow(start=decide)
-flow.run({"context":input("Say something: ")})
+flow.run({"input":input("Say something: "), "scratchpad": []})
 #print(Action.respond == "respond")

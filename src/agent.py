@@ -1,7 +1,7 @@
 from pocketflow import Node, Flow
 from pydantic import BaseModel, Field
 from services.llm_services import get_response, get_response_structured
-from prompts import DECIDE_NODE_PROMPT
+from prompts import DECIDE_NODE_PROMPT, RESPONSE_NODE_PROMPT
 from enum import Enum
 
 decisions = ["get_schema", "generate_sql", "execute_sql", "respond"]
@@ -26,11 +26,20 @@ class decideAction(Node):
         shared["scratchpad"].append(f"Decision Node Route: [{exec_res.action}] Reason: [{exec_res.reasoning}]")
         if hasattr(exec_res, "action") and exec_res.action == Action.respond:
             return "respond"
+        return ""
 
 class responseAction(Node):
     def prep(self, shared):
-        print("hi")
-        return shared["response"]
+        return {"context": shared["input"], "scratchpad": shared["scratchpad"]}
+    
+    def exec(self, prep_res):
+        print("PREP: ", str(prep_res))
+        prompt = RESPONSE_NODE_PROMPT.format(CONTEXT=str(prep_res["context"]), SCRATCHPAD=str("scratchpad"))
+        return get_response(prompt)
+    
+    def post(self, shared, prep_res, exec_res):
+        print("REPSONSE: ", exec_res)
+        return exec_res
 
 decide = decideAction()
 respond = responseAction()
@@ -39,4 +48,3 @@ decide - "respond" >> respond
 
 flow = Flow(start=decide)
 flow.run({"input":input("Say something: "), "scratchpad": []})
-#print(Action.respond == "respond")

@@ -8,6 +8,9 @@ Here are the following tools:
 User query:
 {CONTEXT}
 
+Conversation History:
+{HISTORY}
+
 Give your response as JUST which tool you would use:"""
 
 RESPONSE_NODE_PROMPT = """
@@ -21,6 +24,9 @@ Instructions:
 
 User query:
 {CONTEXT}
+
+Conversation History:
+{HISTORY}
 
 LLM Scratchpad:
 {SCRATCHPAD}

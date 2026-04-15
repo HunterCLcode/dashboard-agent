@@ -2,28 +2,9 @@ import asyncio
 from enum import Enum
 from pocketflow import Node, Flow
 from pydantic import BaseModel, Field
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from services.mcp_adapter import MCPClient
 from services.llm_services import get_response, get_response_structured
 from prompts import DECIDE_NODE_PROMPT, RESPONSE_NODE_PROMPT
-
-# SERVER = StdioServerParameters(
-#     command="python",
-#     args=["-m", "etl.mcp_server"],
-#     cwd="C:/Users/Hunter Lee/Documents/HunterCode/dashboard-agent-etl",
-# )
-
-# async def main():
-#     async with stdio_client(SERVER) as (read, write):
-#         async with ClientSession(read, write) as session:
-#             await session.initialize()
-#             result = await session.list_tools()
-#             for tool in result.tools:
-#                 print(tool.name)
-#                 print(tool.description)
-#                 print()
-
-# asyncio.run(main()) 
 
 decisions = ["get_schema", "generate_sql", "execute_sql", "respond"]
 
@@ -68,5 +49,20 @@ respond = responseAction()
 decide - "respond" >> respond
 
 flow = Flow(start=decide)
-res = flow.run({"input":input("Say something: "), "scratchpad": []})
-print(res)
+
+
+async def main():
+    async with MCPClient() as client:
+        # get tools
+        tools = await client.get_tools()
+        for t in tools:
+            print(t.name, t.description)
+
+        # call a tool
+        result = await client.call_tool("get_schema", {})
+        print("tool call: ", result)
+
+        # res = flow.run({"input":input("Say something: "), "scratchpad": []})
+        # print(res)
+
+asyncio.run(main())

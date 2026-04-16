@@ -43,15 +43,21 @@ class responseAction(Node):
     def post(self, shared, prep_res, exec_res):
         return exec_res
 
-decide = decideAction()
-respond = responseAction()
+class SQLAgent():
+    def __init__(self):
+        # Nodes
+        self.decide = decideAction()
+        self.respond = responseAction()
 
-decide - "respond" >> respond
+        # Flow
+        self.decide - "respond" >> self.respond
 
-flow = Flow(start=decide)
-
+    def head(self):
+        return self.decide
 
 async def main():
+    agent = SQLAgent()
+
     async with MCPClient() as client:
         # get tools
         tools = await client.get_tools()
@@ -62,7 +68,8 @@ async def main():
         result = await client.call_tool("get_schema", {})
         print("tool call: ", result)
 
-        # res = flow.run({"input":input("Say something: "), "scratchpad": []})
-        # print(res)
+        flow = Flow(start=agent.head())
+        res = flow.run({"input":input("Say something: "), "scratchpad": []})
+        print(res)
 
 asyncio.run(main())

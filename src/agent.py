@@ -49,11 +49,15 @@ class SQLAgent():
         self.decide = decideAction()
         self.respond = responseAction()
 
-        # Flow
+        # Node connections
         self.decide - "respond" >> self.respond
 
-    def head(self):
-        return self.decide
+        # Flow
+        self.flow = Flow(start=self.decide)
+
+    def run(self, query: str):
+        res = self.flow.run({"input": query, "scratchpad": []})
+        return res
 
 async def main():
     agent = SQLAgent()
@@ -68,8 +72,6 @@ async def main():
         result = await client.call_tool("get_schema", {})
         print("tool call: ", result)
 
-        flow = Flow(start=agent.head())
-        res = flow.run({"input":input("Say something: "), "scratchpad": []})
-        print(res)
+        print(agent.run(input("What would you like to ask: ")))
 
 asyncio.run(main())

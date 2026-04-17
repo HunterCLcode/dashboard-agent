@@ -36,7 +36,7 @@ class responseAction(Node):
         return {"context": shared["input"], "scratchpad": shared["scratchpad"]}
     
     def exec(self, prep_res):
-        print("PREP: ", str(prep_res))
+        #print("PREP: ", str(prep_res))
         prompt = RESPONSE_NODE_PROMPT.format(CONTEXT=str(prep_res["context"]), SCRATCHPAD=str("scratchpad"), HISTORY="")
         return get_response(prompt)
     
@@ -72,6 +72,12 @@ async def main():
         result = await client.call_tool("get_schema", {})
         print("tool call: ", result)
 
-        print(agent.run(input("What would you like to ask: ")))
+        while True:
+            print('\n' + '=' * 100 + '\n')
+            query = input("What would you like to ask (reply \"quit\" to exit): ")
+
+            if query == "q" or query == "quit": break
+            
+            print('\nOutput: ' + agent.run(query))
 
 asyncio.run(main())

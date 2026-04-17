@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from enum import Enum
 from pocketflow import Node, Flow
 from pydantic import BaseModel, Field
@@ -36,7 +37,6 @@ class responseAction(Node):
         return {"context": shared["input"], "scratchpad": shared["scratchpad"]}
     
     def exec(self, prep_res):
-        #print("PREP: ", str(prep_res))
         prompt = RESPONSE_NODE_PROMPT.format(CONTEXT=str(prep_res["context"]), SCRATCHPAD=str("scratchpad"), HISTORY="")
         return get_response(prompt)
     

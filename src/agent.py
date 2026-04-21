@@ -4,12 +4,12 @@ from enum import Enum
 from pocketflow import Node, Flow
 from pydantic import BaseModel, Field
 from mcp.types import Tool
+from concurrent.futures import ThreadPoolExecutor
 from services.mcp_adapter import MCPClient
 from services.llm_services import get_response, get_response_structured
 from prompts import DECIDE_NODE_PROMPT, RESPONSE_NODE_PROMPT
 
 def build_action_model(tools: list[Tool]):
-    print(tools)
     Action = Enum("Action", {t.name: t.name for t in tools}, type=str)
 
     class AgentAction(BaseModel):
@@ -21,22 +21,20 @@ def build_action_model(tools: list[Tool]):
 
 class decideAction(Node):
     def prep(self, shared):
-        return {"input": shared["input"], "action_model": shared["action_model"], "tool_context": shared["tool_context"]}
+        return {"input": shared["input"], "tool_context": shared["tool_context"]}
     
     def exec(self, prep_res):
-        prompt = DECIDE_NODE_PROMPT.format(TOOLS=prep_res["tool_context"], CONTEXT=str(prep_res), HISTORY="")
-        return get_response_structured(prompt, prep_res["action_model"])
+        prompt = DECIDE_NODE_PROMPT.format(TOOLS=prep_res["tool_context"]["tools_str"], CONTEXT=str(prep_res), HISTORY="")
+        return get_response_structured(prompt, prep_res["tool_context"]["action_model"])
     
     def post(self, shared, prep_res, exec_res):
-        print("SHARED:", shared)
-        print("RESPONSE:", exec_res)
         shared["response"] = exec_res
         if not hasattr(exec_res, "action") or not "scratchpad" in shared:
             return "Error: Attribute error during decision node"
         shared["scratchpad"].append(f"Decision Node Route: [{exec_res.action}] Reason: [{exec_res.reasoning}]")
         # if hasattr(exec_res, "action") and exec_res.action == shared["action_model"].respond:
         #     return "respond"
-        return ""
+        return "execute"
 
 class responseAction(Node):
     def prep(self, shared):
@@ -49,36 +47,58 @@ class responseAction(Node):
     def post(self, shared, prep_res, exec_res):
         return exec_res
 
+class executeTool(Node):
+    def prep(self, shared):
+        print("TESTEST")
+        return {
+          **shared["tool_context"],
+          "action": shared["response"].action,
+          "args": {}
+      }
+    
+    def exec(self, prep_res):
+      with ThreadPoolExecutor() as pool:
+          future = pool.submit(
+              asyncio.run,
+              prep_res["client"].call_tool(prep_res["action"].value, prep_res["args"])
+          )
+          print("res: ", future.result())
+      
+      return ""
+    
+    def post(self, shared, prep_res, exec_res):
+        return exec_res
+
 class SQLAgent():
-    def __init__(self, tools: list[Tool]):
-        self.action_model = build_action_model(tools)
-        self.tool_context = "\n".join(f"- {t.name}: {t.description}" for t in tools)
+    def __init__(self, tools: list[Tool], client):
+        self.tool_context = {
+            "tools": tools,
+            "action_model": build_action_model(tools),
+            "tools_str": "\n".join(f"- {t.name}: {t.description}" for t in tools),
+            "client": client  # MCPClient instance
+        }
 
         # Nodes
         self.decide = decideAction()
         self.respond = responseAction()
+        self.execute = executeTool()
 
         # Node connections
         self.decide - "respond" >> self.respond
+        self.decide - "execute" >> self.execute
 
         # Flow
         self.flow = Flow(start=self.decide)
 
     def run(self, query: str):
-        res = self.flow.run({"input": query, "scratchpad": [], "action_model": self.action_model, "tool_context": self.tool_context})
+        res = self.flow.run({"input": query, "scratchpad": [], "tool_context": self.tool_context})
         return res
 
 async def main():
     async with MCPClient() as client:
         # get tools
         tools = await client.get_tools()
-        agent = SQLAgent(tools)
-        for t in tools:
-            print(t.name, t.description)
-
-        # call a tool
-        result = await client.call_tool("get_schema", {})
-        print("tool call: ", result)
+        agent = SQLAgent(tools, client)
 
         while True:
             print('\n' + '=' * 100 + '\n')

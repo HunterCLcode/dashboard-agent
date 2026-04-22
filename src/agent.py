@@ -3,8 +3,8 @@ import logging
 from enum import Enum
 from pocketflow import Node, Flow
 from pydantic import BaseModel, Field
+from types import SimpleNamespace
 from mcp.types import Tool
-from concurrent.futures import ThreadPoolExecutor
 from services.mcp_adapter import MCPClient
 from services.llm_services import get_response, get_response_structured
 from prompts import DECIDE_NODE_PROMPT, RESPONSE_NODE_PROMPT
@@ -32,8 +32,8 @@ class decideAction(Node):
         if not hasattr(exec_res, "action") or not "scratchpad" in shared:
             return "Error: Attribute error during decision node"
         shared["scratchpad"].append(f"Decision Node Route: [{exec_res.action}] Reason: [{exec_res.reasoning}]")
-        # if hasattr(exec_res, "action") and exec_res.action == shared["action_model"].respond:
-        #     return "respond"
+        if exec_res.action.value == "respond":
+            return "respond"
         return "execute"
 
 class responseAction(Node):
@@ -63,14 +63,17 @@ class executeTool(Node):
         return future.result(timeout=30)
     
     def post(self, shared, prep_res, exec_res):
-        shared["scratchpad"].append(f"Tool executed: [{shared["response"].action.value}] Output: [{exec_res}]")
+        shared["scratchpad"].append(f"Tool executed: [{shared['response'].action.value}] Output: [{exec_res}]")
         return exec_res
 
 class SQLAgent():
     def __init__(self, tools: list[Tool], client, loop):
+        all_tools = (tools +
+                     [SimpleNamespace(name="respond", description="Use when you have enough information to answer the user")])
+
         self.tool_context = {
-            "tools": tools,
-            "action_model": build_action_model(tools),
+            "tools": all_tools,
+            "action_model": build_action_model(all_tools),
             "tools_str": "\n".join(f"- {t.name}: {t.description}" for t in tools),
             "client": client,
             "loop": loop

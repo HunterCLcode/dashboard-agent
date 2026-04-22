@@ -49,7 +49,6 @@ class responseAction(Node):
 
 class executeTool(Node):
     def prep(self, shared):
-        print("TESTEST")
         return {
           **shared["tool_context"],
           "action": shared["response"].action,

@@ -57,13 +57,14 @@ class executeTool(Node):
       }
     
     def exec(self, prep_res):
-      future = asyncio.run_coroutine_threadsafe(
-          prep_res["client"].call_tool(prep_res["action"].value, prep_res["args"]),
-          prep_res["loop"]
-      )
-      return future.result(timeout=30)
+        future = asyncio.run_coroutine_threadsafe(
+            prep_res["client"].call_tool(prep_res["action"].value, prep_res["args"]),
+            prep_res["loop"]
+        )
+        return future.result(timeout=30)
     
     def post(self, shared, prep_res, exec_res):
+        shared["scratchpad"].append(f"Tool executed: [{shared["response"].action.value}] Output: [{exec_res}]")
         return exec_res
 
 class SQLAgent():

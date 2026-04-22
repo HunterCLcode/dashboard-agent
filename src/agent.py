@@ -57,25 +57,23 @@ class executeTool(Node):
       }
     
     def exec(self, prep_res):
-      with ThreadPoolExecutor() as pool:
-          future = pool.submit(
-              asyncio.run,
-              prep_res["client"].call_tool(prep_res["action"].value, prep_res["args"])
-          )
-          print("res: ", future.result())
-      
-      return ""
+      future = asyncio.run_coroutine_threadsafe(
+          prep_res["client"].call_tool(prep_res["action"].value, prep_res["args"]),
+          prep_res["loop"]
+      )
+      return future.result(timeout=30)
     
     def post(self, shared, prep_res, exec_res):
         return exec_res
 
 class SQLAgent():
-    def __init__(self, tools: list[Tool], client):
+    def __init__(self, tools: list[Tool], client, loop):
         self.tool_context = {
             "tools": tools,
             "action_model": build_action_model(tools),
             "tools_str": "\n".join(f"- {t.name}: {t.description}" for t in tools),
-            "client": client  # MCPClient instance
+            "client": client,
+            "loop": loop
         }
 
         # Nodes
@@ -96,16 +94,14 @@ class SQLAgent():
 
 async def main():
     async with MCPClient() as client:
-        # get tools
+        loop = asyncio.get_event_loop()
         tools = await client.get_tools()
-        agent = SQLAgent(tools, client)
+        agent = SQLAgent(tools, client, loop)
 
         while True:
-            print('\n' + '=' * 100 + '\n')
-            query = input("What would you like to ask (reply \"quit\" to exit): ")
-
-            if query == "q" or query == "quit": break
-            
-            print('\nOutput: ' + agent.run(query))
+            query = await loop.run_in_executor(None, input, "\nWhat would you like to ask: ")
+            if query in ("q", "quit"): break
+            result = await loop.run_in_executor(None, agent.run, query)
+            print('\nOutput: ' + result)
 
 asyncio.run(main())

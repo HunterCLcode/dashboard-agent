@@ -26,7 +26,7 @@ Scratchpad (previous tools & output)
 Conversation History:
 {HISTORY}
 
-Give your response as JUST which tool you would use:"""
+Pick what action you would route to and give your response as why:"""
 
 RESPONSE_NODE_PROMPT = """
 You are an expert data consultant responsible for Olist Brazilian E-Commerce dataset from Kaggle 
@@ -52,4 +52,6 @@ Conversation History:
 
 LLM Scratchpad:
 {SCRATCHPAD}
+
+Write your response to the query:
 """

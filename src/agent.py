@@ -21,10 +21,10 @@ def build_action_model(tools: list[Tool]):
 
 class decideAction(Node):
     def prep(self, shared):
-        return {"input": shared["input"], "tool_context": shared["tool_context"], "scratchpad": shared["scratchpad"]}
+        return {"input": shared["input"], "tool_context": shared["tool_context"], "scratchpad": shared["scratchpad"], "history": shared["history"]}
     
     def exec(self, prep_res):
-        prompt = DECIDE_NODE_PROMPT.format(TOOLS=prep_res["tool_context"]["tools_str"], CONTEXT=str(prep_res), HISTORY="", SCRATCHPAD=prep_res["scratchpad"])
+        prompt = DECIDE_NODE_PROMPT.format(TOOLS=prep_res["tool_context"]["tools_str"], CONTEXT=str(prep_res["tool_context"]), HISTORY=str(prep_res["history"]), SCRATCHPAD=prep_res["scratchpad"])
         return get_response_structured(prompt, prep_res["tool_context"]["action_model"])
     
     def post(self, shared, prep_res, exec_res):
@@ -38,10 +38,10 @@ class decideAction(Node):
 
 class responseAction(Node):
     def prep(self, shared):
-        return {"context": shared["input"], "scratchpad": shared["scratchpad"]}
+        return {"context": shared["input"], "scratchpad": shared["scratchpad"], "history": shared["history"]}
     
     def exec(self, prep_res):
-        prompt = RESPONSE_NODE_PROMPT.format(CONTEXT=str(prep_res["context"]), SCRATCHPAD=str("scratchpad"), HISTORY="")
+        prompt = RESPONSE_NODE_PROMPT.format(CONTEXT=str(prep_res["context"]), SCRATCHPAD=str(prep_res["scratchpad"]), HISTORY=str(prep_res["history"]))
         return get_response(prompt)
     
     def post(self, shared, prep_res, exec_res):
@@ -92,8 +92,8 @@ class SQLAgent():
         # Flow
         self.flow = Flow(start=self.decide)
 
-    def run(self, query: str):
-        res = self.flow.run({"input": query, "scratchpad": [], "tool_context": self.tool_context})
+    def run(self, query: str, history: list):
+        res = self.flow.run({"input": query, "history": history, "scratchpad": [], "tool_context": self.tool_context})
         return res
 
 async def main():
@@ -101,11 +101,14 @@ async def main():
         loop = asyncio.get_event_loop()
         tools = await client.get_tools()
         agent = SQLAgent(tools, client, loop)
+        history = []
 
         while True:
             query = await loop.run_in_executor(None, input, "\nWhat would you like to ask: ")
             if query in ("q", "quit"): break
-            result = await loop.run_in_executor(None, agent.run, query)
+            result = await loop.run_in_executor(None, agent.run, query, history)
             print('\nOutput: ' + result)
+            history.append({"role": "user", "message": query})
+            history.append({"role": "agent", "message": result})
 
 asyncio.run(main())

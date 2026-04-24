@@ -21,13 +21,14 @@ def build_action_model(tools: list[Tool]):
 
 class decideAction(Node):
     def prep(self, shared):
-        return {"input": shared["input"], "tool_context": shared["tool_context"]}
+        return {"input": shared["input"], "tool_context": shared["tool_context"], "scratchpad": shared["scratchpad"]}
     
     def exec(self, prep_res):
-        prompt = DECIDE_NODE_PROMPT.format(TOOLS=prep_res["tool_context"]["tools_str"], CONTEXT=str(prep_res), HISTORY="")
+        prompt = DECIDE_NODE_PROMPT.format(TOOLS=prep_res["tool_context"]["tools_str"], CONTEXT=str(prep_res), HISTORY="", SCRATCHPAD=prep_res["scratchpad"])
         return get_response_structured(prompt, prep_res["tool_context"]["action_model"])
     
     def post(self, shared, prep_res, exec_res):
+        print("decide post")
         shared["response"] = exec_res
         if not hasattr(exec_res, "action") or not "scratchpad" in shared:
             return "Error: Attribute error during decision node"
@@ -64,7 +65,7 @@ class executeTool(Node):
     
     def post(self, shared, prep_res, exec_res):
         shared["scratchpad"].append(f"Tool executed: [{shared['response'].action.value}] Output: [{exec_res}]")
-        return exec_res
+        return "default"
 
 class SQLAgent():
     def __init__(self, tools: list[Tool], client, loop):
@@ -87,6 +88,7 @@ class SQLAgent():
         # Node connections
         self.decide - "respond" >> self.respond
         self.decide - "execute" >> self.execute
+        self.execute >> self.decide
 
         # Flow
         self.flow = Flow(start=self.decide)

@@ -28,7 +28,6 @@ class decideAction(Node):
         return get_response_structured(prompt, prep_res["tool_context"]["action_model"])
     
     def post(self, shared, prep_res, exec_res):
-        print("decide post")
         shared["response"] = exec_res
         if not hasattr(exec_res, "action") or not "scratchpad" in shared:
             return "Error: Attribute error during decision node"

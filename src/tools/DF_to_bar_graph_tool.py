@@ -2,7 +2,7 @@ import logging
 from typing import Type
 from pydantic import BaseModel, Field
 
-import plotly.express as px
+#import plotly.express as px
 import pandas as pd
 import tempfile
 import os
@@ -23,10 +23,10 @@ class DFToPlotlyBarTool():
     def _run(self, df_list: list, x_column_name: str, y_column_name: str, title: str = "") -> str:
         try:
             df = pd.DataFrame(df_list)
-            fig = px.bar(df, x=x_column_name, y=y_column_name, title=title)
+            #fig = px.bar(df, x=x_column_name, y=y_column_name, title=title)
             logging.info("Plotly bar graph created successfully.")
             image_path = ""
-            fig.write_image(image_path)
+            #fig.write_image(image_path)
             
             return image_path  # Return the file path for gr.Image
         except Exception as e:

@@ -1,8 +1,9 @@
 import asyncio
 import logging
+import json
 from enum import Enum
 from pocketflow import Node, Flow
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from types import SimpleNamespace
 from mcp.types import Tool
 from services.mcp_adapter import MCPClient
@@ -15,8 +16,7 @@ def build_action_model(tools: list[Tool]):
     class AgentAction(BaseModel):
         action: Action
         reasoning : str = Field("", description="Short reason why you chose this route, should be 1-2 sentences")
-        #args: dict= Field({}, description= "Arugments for chosen tool")
-
+        args: str = Field("", description="JSON encoded arguments for the chosen tool e.g. '{\"query\": \"SELECT ...\"}' ")
     return AgentAction
 
 class decideAction(Node):
@@ -49,10 +49,11 @@ class responseAction(Node):
 
 class executeTool(Node):
     def prep(self, shared):
-        return {
+      raw_args = shared["response"].args
+      return {
           **shared["tool_context"],
           "action": shared["response"].action,
-          "args": {}
+          "args": json.loads(raw_args) if raw_args else {}
       }
     
     def exec(self, prep_res):
@@ -71,10 +72,23 @@ class SQLAgent():
         all_tools = (tools +
                      [SimpleNamespace(name="respond", description="Use when you have enough information to answer the user")])
 
+        def _format_tool(t) -> str:
+            line = f"- {t.name}: {t.description}"
+            if hasattr(t, "inputSchema") and t.inputSchema:
+                props = t.inputSchema.get("properties", {})
+                required = t.inputSchema.get("required", [])
+                if props:
+                    args = ", ".join(
+                        f"{k}: {v.get('type', 'any')} ({'required' if k in required else 'optional'})"
+                        for k, v in props.items()
+                    )
+                    line += f" | args: {{{args}}}"
+            return line
+
         self.tool_context = {
             "tools": all_tools,
             "action_model": build_action_model(all_tools),
-            "tools_str": "\n".join(f"- {t.name}: {t.description}" for t in tools),
+            "tools_str": "\n".join(_format_tool(t) for t in tools),
             "client": client,
             "loop": loop
         }

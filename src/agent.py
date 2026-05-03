@@ -9,6 +9,7 @@ from mcp.types import Tool
 from services.mcp_adapter import MCPClient
 from services.llm_services import get_response, get_response_structured
 from prompts import DECIDE_NODE_PROMPT, RESPONSE_NODE_PROMPT
+from tools import LOCAL_TOOLS
 
 def build_action_model(tools: list[Tool]):
     Action = Enum("Action", {t.name: t.name for t in tools}, type=str)

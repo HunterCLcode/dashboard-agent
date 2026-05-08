@@ -46,7 +46,11 @@ class responseAction(Node):
         return get_response(prompt)
     
     def post(self, shared, prep_res, exec_res):
-        return exec_res
+        result = {"summary": exec_res}
+        if "chart" in shared:
+            result.update(shared["chart"])
+            print("chart", shared["chart"])
+        return result
 
 class executeTool(Node):
     def prep(self, shared):
@@ -73,6 +77,12 @@ class executeTool(Node):
         return future.result(timeout=30)
         
     def post(self, shared, prep_res, exec_res):
+        try:
+            parsed = json.loads(exec_res)
+            if "chart_type" in parsed:
+                shared["chart"] = parsed
+        except (json.JSONDecodeError, TypeError):
+            pass
         shared["scratchpad"].append(f"Tool executed: [{shared['response'].action.value}] Output: [{exec_res}]")
         return "default"
 

@@ -1,5 +1,5 @@
 from .reflect_tool import reflect, ReflectArgs
-from .DF_to_bar_graph_tool import DFToPlotlyBarTool, DFToPlotlyBarArgs
+from .DF_to_bar_graph_tool import DFToBarTool, DFToBarArgs
 
 LOCAL_TOOLS = [
     {
@@ -10,8 +10,8 @@ LOCAL_TOOLS = [
     },
     {
         "name": "dataframe to graph",
-        "description": DFToPlotlyBarTool.__doc__,
-        "args_model": DFToPlotlyBarArgs,
-        "fn": DFToPlotlyBarTool,
+        "description": DFToBarTool.__doc__,
+        "args_model": DFToBarArgs,
+        "fn": DFToBarTool,
     }
 ]

@@ -49,8 +49,8 @@ class responseAction(Node):
         result = {"summary": exec_res}
         if "chart" in shared:
             result.update(shared["chart"])
-            print("chart", shared["chart"])
-        return result
+        shared["result"] = result
+        return None
 
 class executeTool(Node):
     def prep(self, shared):
@@ -137,8 +137,9 @@ class SQLAgent():
         self.flow = Flow(start=self.decide)
 
     def run(self, query: str, history: list):
-        res = self.flow.run({"input": query, "history": history, "scratchpad": [], "tool_context": self.tool_context})
-        return res
+      shared = {"input": query, "history": history, "scratchpad": [], "tool_context": self.tool_context}
+      self.flow.run(shared)
+      return shared.get("result")
 
 async def main():
     async with MCPClient() as client:
@@ -151,7 +152,7 @@ async def main():
             query = await loop.run_in_executor(None, input, "\nWhat would you like to ask: ")
             if query in ("q", "quit"): break
             result = await loop.run_in_executor(None, agent.run, query, history)
-            print('\nOutput: ' + result)
+            print('\nOutput: ' + result["summary"])
             history.append({"role": "user", "message": query})
             history.append({"role": "agent", "message": result})
 

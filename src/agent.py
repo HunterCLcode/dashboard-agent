@@ -21,6 +21,7 @@ def build_action_model(tools: list[Tool]):
     return AgentAction
 
 class decideAction(Node):
+    """ Node responsible for deciding to use which tool or to respond to the user """
     def prep(self, shared):
         return {"input": shared["input"], "tool_context": shared["tool_context"], "scratchpad": shared["scratchpad"], "history": shared["history"]}
     
@@ -38,6 +39,8 @@ class decideAction(Node):
         return "execute"
 
 class responseAction(Node):
+    """ Node responsible for gathering context from tools/query and constructing final response """
+
     def prep(self, shared):
         return {"context": shared["input"], "scratchpad": shared["scratchpad"], "history": shared["history"]}
     
@@ -53,6 +56,7 @@ class responseAction(Node):
         return None
 
 class executeTool(Node):
+    """ Node responsible for gathering tool and args and executing it """
     def prep(self, shared):
         raw_args = shared["response"].args
         return {

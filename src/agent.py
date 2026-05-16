@@ -12,6 +12,7 @@ from prompts import DECIDE_NODE_PROMPT, RESPONSE_NODE_PROMPT
 from tools import LOCAL_TOOLS
 
 def build_action_model(tools: list[Tool]):
+    """ Builds the decideNode's action args """
     Action = Enum("Action", {t.name: t.name for t in tools}, type=str)
 
     class AgentAction(BaseModel):
